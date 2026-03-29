@@ -80,12 +80,15 @@ def health() -> Dict[str, Any]:
 @app.post("/api/chat")
 def chat(request: ChatRequest) -> Dict[str, Any]:
     language = request.language if request.language in LANGUAGE_GUIDANCE else "en"
-    answer = rag_pipeline.answer_gst_query(
-        message=request.message,
-        language=language,
-        business_type=request.business_type,
-    )
-    return api_response({"answer": answer}, language=language)
+    try:
+        answer = rag_pipeline.answer_gst_query(
+            message=request.message,
+            language=language,
+            business_type=request.business_type,
+        )
+        return api_response({"answer": answer}, language=language)
+    except Exception as e:
+        return api_response({"answer": f"Service unavailable. Please try again. ({str(e)})"}, language=language, status="error")
 
 
 @app.post("/api/invoice/analyze")
@@ -94,23 +97,37 @@ async def analyze_invoice(
     language: str = Form(default="en"),
 ) -> Dict[str, Any]:
     lang = language if language in LANGUAGE_GUIDANCE else "en"
-    extracted_text = await invoice_agent.ocr_from_upload(file)
+    try:
+        extracted_text = await invoice_agent.ocr_from_upload(file)
 
-    if not extracted_text:
+        if not extracted_text:
+            return api_response(
+                {
+                    "hsn": "unknown",
+                    "gst_rate": "unknown",
+                    "errors": ["No text could be extracted from invoice."],
+                    "suggestions": ["Upload a clearer invoice image/PDF and try again."],
+                    "extracted_text_preview": "",
+                },
+                language=lang,
+                status="error",
+            )
+
+        analysis = invoice_agent.analyze_invoice_text(extracted_text, language=lang)
+        analysis["extracted_text_preview"] = extracted_text[:1000]
+        return api_response(analysis, language=lang)
+    except Exception as e:
         return api_response(
             {
                 "hsn": "unknown",
                 "gst_rate": "unknown",
-                "errors": ["No text could be extracted from invoice."],
-                "suggestions": ["Upload a clearer invoice image/PDF and try again."],
+                "errors": [f"Error checking invoice: {str(e)}"],
+                "suggestions": ["Ensure file is a valid image/PDF."],
+                "extracted_text_preview": "",
             },
             language=lang,
             status="error",
         )
-
-    analysis = invoice_agent.analyze_invoice_text(extracted_text, language=lang)
-    analysis["extracted_text_preview"] = extracted_text[:1000]
-    return api_response(analysis, language=lang)
 
 
 @app.post("/api/compliance/check")
@@ -143,8 +160,17 @@ Tasks:
 5) Check likely composition scheme eligibility.
 """.strip()
 
-    response = compliance_llm.invoke(prompt)
-    content = response.content if hasattr(response, "content") else str(response)
-    guidance = extract_first_json(content)
-
-    return api_response(guidance, language=language)
+    try:
+        response = compliance_llm.invoke(prompt)
+        content = response.content if hasattr(response, "content") else str(response)
+        guidance = extract_first_json(content)
+        return api_response(guidance, language=language)
+    except Exception as e:
+        return api_response({
+            "registration_required": "Error",
+            "applicable_forms": [],
+            "due_dates": [],
+            "penalties": [],
+            "composition_eligible": "Error",
+            "notes": [f"Failed to check compliance: {str(e)}"]
+        }, language=language, status="error")

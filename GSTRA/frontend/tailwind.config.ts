@@ -8,18 +8,11 @@ const config: Config = {
   ],
   theme: {
     extend: {
-      colors: {
-        maroon: "#7B1C1C",
-        ember: "#AA3A2A",
-        parchment: "#F9F1E7",
-        coal: "#2A1616"
-      },
-      boxShadow: {
-        warm: "0 8px 30px rgba(123, 28, 28, 0.2)"
-      }
     }
   },
-  plugins: []
+  plugins: [
+    require('@tailwindcss/typography'),
+  ]
 };
 
 export default config;
