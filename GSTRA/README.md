@@ -4,9 +4,9 @@ GenAI-powered GST compliance assistant for Indian MSMEs.
 
 ## What This Includes
 
-- `backend/` FastAPI (Python 3.11)
-  - RAG over GST PDFs using LangChain + ChromaDB + local sentence-transformers embeddings
-  - OCR-based invoice analysis with GST validation logic
+- `backend/` FastAPI (Python 3.12+)
+  - RAG over GST PDFs using LangChain + ChromaDB + local embeddings
+  - Hybrid invoice analysis (Native `pypdf` parsing + `pytesseract` OCR fallback)
   - Compliance checker for filing guidance
 - `frontend/` Next.js 14 + Tailwind CSS
   - Chat interface
@@ -42,8 +42,8 @@ GenAI-powered GST compliance assistant for Indian MSMEs.
       +-------------------------+   +--------------------------+
       | RAG Pipeline            |   | Invoice + Compliance     |
       | - LangChain             |   | Agents                   |
-      | - ChromaDB (local)      |   | - OCR (pytesseract)      |
-      | - all-MiniLM-L6-v2      |   | - LLM structured output  |
+      | - ChromaDB (local)      |   | - Hybrid Parser (pypdf)  |
+      | - all-MiniLM-L6-v2      |   | - OCR Fallback           |
       +-----------+-------------+   +------------+-------------+
                   |                              |
                   v                              v
@@ -98,10 +98,10 @@ pip install -r requirements.txt
 uvicorn main:app --reload --host 0.0.0.0 --port 8000
 ```
 
-System dependencies required for OCR:
+System dependencies required for OCR fallback (if analyzing scanned images):
 
 - `tesseract-ocr`
-- `poppler` (needed by `pdf2image`)
+- `poppler` (needed by `pdf2image` for rendering image scans, but natively bypassed for text-based PDFs)
 
 ### 2) Frontend
 

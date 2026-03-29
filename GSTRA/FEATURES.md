@@ -10,10 +10,10 @@
 *An intelligent AI Tax Associate tailored to answer GST queries, ground responses in actual law, and bridge the language gap for Tier 2/3 business owners.*
 
 **Key UI Elements & Capabilities:**
-* **AI Context Panel (Left Sidebar):** A comprehensive business profile engine. Instead of generic advice, users set their *Annual Turnover* (via a fluid slider), *State*, *Sector*, *GST Status*, and *B2B/B2C* operations. The AI dynamically incorporates this profile to calculate precise thresholds and form requirements.
+* **Instant Profile Insights (Left Sidebar):** A dynamic, reactive business profile engine. Instead of generic advice, users set their *Annual Turnover* (via a fluid slider), *State*, *Sector*, and *GST Status*. Using Framer Motion, the UI instantly generates animated "Live Insight" badges (e.g., alert tags for exceeding 20 Lakh turnover thresholds for registration), actively adapting to the user's business context.
 * **Voice-First Input Mode:** A "WhatsApp-style" pulsing microphone icon allows shopkeepers to dictate complex queries naturally, rendering a dynamic audio waveform UI while transcribing the query.
 * **"Trust & Verify" Citation Drawer:** To eliminate AI hallucination fears, legal claims generate clickable Ruby-Red source pills. Clicking these triggers a sleek right-hand drawer displaying the exact legal excerpt (e.g., GST Circulars) retrieved by our RAG pipeline.
-* **CA Export Utility:** A one-click "Export to CA" button instantly packages the entire conversation history, complete with verified legal citations and the active business profile, into a professional PDF-ready Markdown document to be sent to an accountant.
+* **Smart CA Export Utility:** A one-click "Export to CA" button that triggers a specialized LLM pipeline. Instead of a raw chat dump, it parses the history to instantly generate a professionally formatted, actionable HTML/PDF _Tax Advisory Report_ to be sent directly to an accountant.
 
 ### 2. 📊 Gamified Compliance Dashboard
 *A comprehensive visual tracker that reframes compliance as a positive habit rather than a looming punishment.*
@@ -24,8 +24,8 @@
 * **Live Compliance Status Modules:** Quick-glance cards indicating whether GST Registration is legally required, which specific forms apply, and Composition Scheme eligibility based dynamically on the user's active UI sliders.
 * **Late Fee Impact Visualization:** An interactive Recharts-powered Bar Chart natively estimating financial risk/late fees scaling across varying delay periods (1 month, 3 months, etc.), showing business owners the exact cost of non-compliance.
 
-### 3. 📄 "Action-Oriented" Invoice Analyzer (OCR)
-*More than just extraction—this module proactively flags ITC (Input Tax Credit) risks and formatting errors before they result in governmental penalties.*
+### 3. 📄 "Action-Oriented" Invoice Analyzer (Hybrid Parser)
+*More than just extraction—this module proactively flags ITC (Input Tax Credit) risks and formatting errors before they result in governmental penalties. It utilizes a robust hybrid parsing engine that primarily natively extracts embedded text via `pypdf`, falling back gracefully to Tesseract OCR for flat images to prevent system crashes across different OS environments.*
 
 **Key UI Elements & Capabilities:**
 * **Framer Motion Dropzone:** A smooth, interactive drag-and-drop area that gives immediate visual feedback upon file upload.
@@ -44,7 +44,7 @@
   * *Architecture:* Fast, async-first endpoints serving strict JSON error-handled contracts.
   * *AI Generation:* LangChain orchestrated with OpenRouter/Ollama powering the business logic.
   * *Knowledge Base (RAG):* ChromaDB for indexing and querying complex GST laws and governmental circulars.
-  * *Computer Vision:* Pytesseract integrated with multi-agent orchestration for rigorous receipt analysis.
+  * *Computer Vision & Parsing:* `pypdf` for fast, native text extraction from structured PDFs, and `pytesseract`/`pdf2image` integrated for secondary image OCR—orchestrated via adaptive backends.
 
 ---
 
