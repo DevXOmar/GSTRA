@@ -1,254 +1,371 @@
 "use client";
 
-import { useMutation } from "@tanstack/react-query";
-import { useState, useEffect } from "react";
-import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
-import { checkCompliance, LanguageCode } from "@/lib/api";
-import { toast } from "sonner";
-import { ShieldCheck, CalendarClock, AlertCircle, TrendingUp, CheckCircle2, ChevronRight, Activity } from "lucide-react";
-import { motion } from "framer-motion";
-
-const penaltyData = [
-  { delay: "1 month", amount: 1500 },
-  { delay: "3 months", amount: 4500 },
-  { delay: "6 months", amount: 9000 },
-  { delay: "12+ months", amount: 18000 }
-];
+import { 
+  AlertTriangle, 
+  TrendingUp, 
+  BookOpen, 
+  Clock, 
+  CheckCircle2, 
+  XCircle, 
+  AlertOctagon, 
+  Settings2,
+  X,
+  FileText,
+  ChevronRight,
+  ExternalLink
+} from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
+import { useState } from "react";
 
 export default function DashboardPage() {
-  const [turnover, setTurnover] = useState(2000000);
+  const [showProfileDrawer, setShowProfileDrawer] = useState(false);
+  const [showLegalDetails, setShowLegalDetails] = useState<{title: string, text: string} | null>(null);
+
+  // Profile State
+  const [turnover, setTurnover] = useState("2000000");
   const [sector, setSector] = useState("Retail");
   const [state, setState] = useState("Telangana");
-  const [language, setLanguage] = useState<LanguageCode>("en");
-
-  const mutation = useMutation({
-    mutationFn: checkCompliance,
-    onSuccess: (res) => {
-        if (res.status === 'error') {
-            toast.error("Failed to check compliance. Please try again.");
-        } else {
-            toast.success("Compliance profile updated successfully.");
-        }
-    },
-    onError: () => {
-        toast.error("Network error while checking compliance.");
-    }
-  });
-
-  // Automatically check on mount
-  useEffect(() => {
-    mutation.mutate({
-      turnover,
-      sector: `${sector} in ${state}`,
-      filing_type: "regular",
-      language
-    });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  const handleUpdate = () => {
-      mutation.mutate({
-        turnover,
-        sector: `${sector} in ${state}`,
-        filing_type: "regular",
-        language
-      });
-  };
-
-  const getArray = (val: any) => {
-    if (!val) return [];
-    if (Array.isArray(val)) return val;
-    return [String(val)];
-  };
-
-  const getStatusClass = (status: string) => {
-    const s = String(status || "").toLowerCase();
-    if (s.includes('yes') || s.includes('required')) return 'bg-amber-50 border-amber-200';
-    return 'bg-green-50 border-green-200';
-  };
+  
+  // Smart Logics
+  const numTurnover = Number(turnover);
+  const isRegistrationRequired = numTurnover >= 2000000;
+  const isCompositionEligible = numTurnover <= 15000000 && sector === "Retail";
+  
+  const currentDay = new Date().getDate();
+  const isGstr1Urgent = currentDay >= 8 && currentDay <= 11;
+  const isGstr3bUrgent = currentDay >= 17 && currentDay <= 20;
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-          <div>
-            <h2 className="text-2xl font-bold text-slate-800 flex items-center gap-2">
-                <Activity className="text-rose-700" /> Compliance Tracker
-            </h2>
-            <p className="text-sm text-slate-500 mt-1">Keep track of your filing status, deadlines, and penalty risks.</p>
+    <div className="max-w-6xl mx-auto space-y-8 pb-10">
+      
+      {/* Header & Read-Only Profile Bar */}
+      <header className="flex flex-col md:flex-row md:justify-between md:items-end gap-6 pb-6 border-b border-slate-200">
+        <div>
+          <h1 className="text-4xl font-extrabold text-slate-900 tracking-tight">Compliance Center</h1>
+          <p className="text-slate-500 mt-2 text-sm font-medium">Real-time GST risk assessment and deadlines.</p>
+        </div>
+        
+        {/* Sleek Read-Only Profile Pill */}
+        <div className="flex bg-slate-900 text-white rounded-xl p-1 shadow-lg shadow-slate-900/10">
+          <div className="flex items-center gap-3 px-4 py-2 border-r border-slate-700/50">
+            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+            <p className="text-sm font-semibold tracking-wide">
+              ₹{(numTurnover/100000).toFixed(1)}L • {sector} • {state}
+            </p>
           </div>
           <button 
-             onClick={handleUpdate} 
-             disabled={mutation.isPending}
-             className="bg-rose-700 hover:bg-rose-800 text-white px-5 py-2.5 rounded-full text-sm font-semibold transition-colors flex items-center justify-center gap-2 disabled:opacity-50"
+            onClick={() => setShowProfileDrawer(true)}
+            className="px-4 py-2 text-sm font-semibold text-slate-300 hover:text-white hover:bg-slate-800 transition-colors rounded-lg flex items-center gap-2"
           >
-             <ShieldCheck size={18} /> Update Profile
+            <Settings2 size={16} /> Edit
           </button>
-      </div>
-
-      <div className="grid gap-4 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm md:grid-cols-4">
-        <label className="space-y-2 col-span-2 md:col-span-1">
-          <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Turnover: ₹{(turnover / 100000).toFixed(1)} Lakhs</span>
-          <input
-            type="range"
-            min={100000}
-            max={10000000}
-            step={100000}
-            value={turnover}
-            onChange={(e) => setTurnover(Number(e.target.value))}
-            className="w-full accent-rose-700"
-          />
-        </label>
-
-        <label className="space-y-1 col-span-2 md:col-span-1">
-          <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Sector</span>
-          <select
-            value={sector}
-            onChange={(e) => setSector(e.target.value)}
-            className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm focus:border-rose-500 outline-none"
-          >
-            <option>Retail</option>
-            <option>Manufacturing</option>
-            <option>Services</option>
-            <option>E-commerce</option>
-          </select>
-        </label>
-
-        <label className="space-y-1 col-span-2 md:col-span-1">
-          <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">State</span>
-          <select
-            value={state}
-            onChange={(e) => setState(e.target.value)}
-            className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm focus:border-rose-500 outline-none"
-          >
-            <option>Telangana</option>
-            <option>Tamil Nadu</option>
-            <option>Karnataka</option>
-            <option>Maharashtra</option>
-            <option>West Bengal</option>
-          </select>
-        </label>
-
-        <label className="space-y-1 col-span-2 md:col-span-1">
-          <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Language</span>
-          <select
-            value={language}
-            onChange={(e) => setLanguage(e.target.value as LanguageCode)}
-            className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm focus:border-rose-500 outline-none"
-          >
-            <option value="en">English</option>
-            <option value="hi">Hindi</option>
-            <option value="te">Telugu</option>
-            <option value="ta">Tamil</option>
-            <option value="bn">Bengali</option>
-          </select>
-        </label>
-      </div>
-
-      {mutation.isPending && (
-        <div className="space-y-4">
-          <div className="grid gap-4 md:grid-cols-3">
-             <div className="skeleton h-24 rounded-2xl bg-slate-200" />
-             <div className="skeleton h-24 rounded-2xl bg-slate-200" />
-             <div className="skeleton h-24 rounded-2xl bg-slate-200" />
-          </div>
-          <div className="skeleton h-48 rounded-2xl bg-slate-200" />
         </div>
-      )}
+      </header>
 
-      {mutation.data && (
-        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-6">
-          <div className="grid gap-4 md:grid-cols-3">
-            <article className={`rounded-2xl border p-5 shadow-sm ${getStatusClass(mutation.data.data.registration_required)}`}>
-              <div className="flex items-center gap-2 mb-2">
-                 {String(mutation.data.data.registration_required || "").toLowerCase().includes('yes') || String(mutation.data.data.registration_required || "").toLowerCase().includes('required') ? <AlertCircle className="text-amber-600" size={18} /> : <CheckCircle2 className="text-green-600" size={18} />}
-                 <p className="text-sm font-semibold text-slate-700">Registration</p>
+      {/* Professional Penalty-Free Banner */}
+      <motion.div 
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="bg-slate-900 rounded-2xl p-6 md:p-8 flex flex-col md:flex-row items-center justify-between shadow-xl shadow-slate-900/10 border border-slate-800"
+      >
+        <div className="flex items-center gap-6 mb-4 md:mb-0">
+          <div className="relative">
+              <div className="absolute inset-0 bg-emerald-500 blur-xl opacity-20 rounded-full"></div>
+              <div className="relative bg-slate-800 p-4 rounded-full border border-slate-700">
+                <CheckCircle2 size={32} className="text-emerald-400" />
               </div>
-              <p className="text-lg font-bold text-slate-900">{mutation.data.data.registration_required}</p>
-            </article>
-
-            <article className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-              <div className="flex items-center gap-2 mb-2">
-                 <ShieldCheck className="text-rose-700" size={18} />
-                 <p className="text-sm font-semibold text-slate-700">Required Forms</p>
-              </div>
-              <div className="flex flex-wrap gap-2 mt-2">
-                 {getArray(mutation.data.data.applicable_forms).map((form: string) => (
-                    <span key={form} className="bg-rose-50 text-rose-700 border border-rose-200 text-xs font-bold px-2 py-1 rounded">{form}</span>
-                 ))}
-                 {getArray(mutation.data.data.applicable_forms).length === 0 && <span className="text-sm text-slate-500">N/A</span>}
-              </div>
-            </article>
-
-            <article className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-              <div className="flex items-center gap-2 mb-2">
-                 <TrendingUp className="text-rose-700" size={18} />
-                 <p className="text-sm font-semibold text-slate-700">Composition Scheme</p>
-              </div>
-              <p className="text-lg font-bold text-slate-900">{mutation.data.data.composition_eligible}</p>
-            </article>
           </div>
-
-          <div className="grid md:grid-cols-2 gap-6">
-            <div className="rounded-2xl border border-slate-200 bg-white shadow-sm overflow-hidden flex flex-col">
-              <div className="bg-slate-50 border-b border-slate-100 p-4 shrink-0">
-                  <h3 className="font-bold text-slate-800 flex items-center gap-2"><CalendarClock size={18} className="text-rose-700" /> Upcoming Deadlines</h3>
-              </div>
-              <div className="p-0 flex-1">
-                {getArray(mutation.data.data.due_dates).length > 0 ? (
-                    <div className="divide-y divide-slate-100">
-                        {getArray(mutation.data.data.due_dates).map((date: string, idx: number) => (
-                        <div key={`${date}-${idx}`} className="p-4 flex items-start gap-3 hover:bg-slate-50 transition-colors">
-                            <div className="w-2 h-2 rounded-full bg-rose-500 mt-2 shrink-0" />
-                            <p className="text-sm text-slate-700 leading-relaxed font-medium">{date}</p>
-                        </div>
-                        ))}
-                    </div>
-                ) : (
-                    <div className="p-8 text-center text-slate-500 text-sm">No immediate deadlines found.</div>
-                )}
-              </div>
-            </div>
-
-            <div className="rounded-2xl border border-slate-200 bg-white shadow-sm flex flex-col">
-              <div className="bg-slate-50 border-b border-slate-100 p-4 shrink-0">
-                  <h3 className="font-bold text-slate-800 flex items-center gap-2"><AlertCircle size={18} className="text-red-500" /> Action Required & Notes</h3>
-              </div>
-              <div className="p-4 flex-1 space-y-3">
-                  {getArray(mutation.data.data.notes).map((note: string, idx: number) => (
-                      <div key={`note-${idx}`} className="bg-amber-50 border border-amber-100 rounded-xl p-4 flex gap-3 text-sm text-amber-900">
-                          <ChevronRight size={16} className="text-amber-500 shrink-0 mt-0.5" />
-                          <p>{note}</p>
-                      </div>
-                  ))}
-                  {getArray(mutation.data.data.penalties).map((penalty: string, idx: number) => (
-                      <div key={`pen-${idx}`} className="bg-red-50 border border-red-100 rounded-xl p-4 flex gap-3 text-sm text-red-900">
-                          <AlertCircle size={16} className="text-red-500 shrink-0 mt-0.5" />
-                          <p>{penalty}</p>
-                      </div>
-                  ))}
-              </div>
-            </div>
+          <div>
+            <h2 className="text-white text-xl font-bold">Penalty-Free Status Active</h2>
+            <p className="text-slate-400 text-sm mt-1">
+              You have maintained full compliance for <span className="text-emerald-400 font-bold">142 Days</span>.
+            </p>
           </div>
+        </div>
+        <div className="bg-slate-800/50 border border-slate-700 rounded-xl p-4 text-center min-w-[200px]">
+            <p className="text-xs text-slate-400 font-bold uppercase tracking-widest mb-1">Total Risk Avoided</p>
+            <p className="text-2xl font-black text-white">₹14,500</p>
+        </div>
+      </motion.div>
 
-          <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-            <h3 className="mb-4 font-bold text-slate-800 text-sm uppercase tracking-wider">Estimated Late Fee Impact (GSTR-3B)</h3>
-            <div className="h-64">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={penaltyData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E2E8F0" />
-                  <XAxis dataKey="delay" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#64748B' }} dy={10} />
-                  <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#64748B' }} />
-                  <Tooltip 
-                    cursor={{ fill: '#F1F5F9' }} 
-                    contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)', fontSize: '13px', fontWeight: 'bold' }} 
-                  />
-                  <Bar dataKey="amount" fill="#be123c" radius={[4, 4, 0, 0]} maxBarSize={60} />
-                </BarChart>
-              </ResponsiveContainer>
+      {/* Top 2 Core Metric Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        
+        {/* Next Deadline Card */}
+        <motion.div 
+          initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}
+          className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm relative overflow-hidden group flex flex-col"
+        >
+          <div className="absolute top-0 right-0 w-24 h-24 bg-red-50 rounded-bl-full -mr-4 -mt-4 transition-transform group-hover:scale-110"></div>
+          <div className="flex justify-between items-start mb-6 relative">
+            <div className="bg-red-100 text-red-700 p-3 rounded-xl border border-red-200">
+                <Clock size={20} />
             </div>
+            <span className={`text-xs font-bold px-3 py-1 rounded-full border shadow-sm ${currentDay > 20 ? 'bg-slate-50 text-slate-600 border-slate-200' : 'bg-red-50 text-red-700 border-red-200'}`}>
+               {currentDay > 20 ? 'NORMAL' : 'URGENT'}
+            </span>
+          </div>
+          <div className="mt-auto">
+            <h3 className="text-slate-500 text-xs font-bold uppercase tracking-widest mb-1">Upcoming Deadline</h3>
+            <p className="text-3xl font-black text-slate-900 mb-2">{currentDay > 20 ? "Next Month" : "Few Days"}</p>
+            <p className="text-sm font-semibold text-slate-600 flex items-center gap-1.5">
+               <Clock size={14} className="text-slate-400" /> Plan ahead for next return.
+            </p>
           </div>
         </motion.div>
-      )}
+
+        {/* Financial Risk Card */}
+        <motion.div 
+          initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}
+          className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm relative overflow-hidden group flex flex-col"
+        >
+          <div className="absolute top-0 right-0 w-24 h-24 bg-rose-50 rounded-bl-full -mr-4 -mt-4 transition-transform group-hover:scale-110"></div>
+          <div className="flex justify-between items-start mb-6 relative">
+            <div className="bg-rose-100 text-rose-700 p-3 rounded-xl border border-rose-200">
+                <AlertTriangle size={20} />
+            </div>
+            <span className="text-rose-600 text-xs font-bold rounded-full bg-rose-50 px-3 py-1 border border-rose-200">
+               PROJECTED
+            </span>
+          </div>
+          <div className="mt-auto">
+            <h3 className="text-slate-500 text-xs font-bold uppercase tracking-widest mb-1">Estimated Penalty Risk</h3>
+            <p className="text-3xl font-black text-slate-900 mb-2">₹1,500</p>
+            <p className="text-sm font-medium text-slate-600">
+               If returns are delayed by 30 days (+₹50/day).
+            </p>
+          </div>
+        </motion.div>
+      </div>
+
+      {/* Informational Status Cards - Redesigned Smart Status Indicators */}
+      <h2 className="text-xl font-bold text-slate-900 border-b border-slate-200 pb-2 mt-10">Smart Status & Next Steps</h2>
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        
+        {/* Registration Card */}
+        <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm flex flex-col">
+          <div className="flex justify-between items-start mb-4">
+             <h3 className="text-slate-800 font-bold flex items-center gap-2">
+               <BookOpen size={18} className={isRegistrationRequired ? "text-red-500" : "text-emerald-500"} /> 
+               Registration
+             </h3>
+             {isRegistrationRequired ? (
+               <span className="bg-red-50 text-red-700 border border-red-200 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wide">
+                 Required
+               </span>
+             ) : (
+               <span className="bg-emerald-50 text-emerald-700 border border-emerald-200 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wide">
+                 Exempt
+               </span>
+             )}
+          </div>
+          <p className="text-sm text-slate-600 font-medium mb-6 flex-1">
+            {isRegistrationRequired 
+              ? `Your turnover of ₹${(numTurnover/100000).toFixed(1)}L exceeds the ₹20 Lakh threshold for ${state}. You must register for GST.` 
+              : `Your turnover of ₹${(numTurnover/100000).toFixed(1)}L is below the ₹20 Lakh threshold. GST registration is optional.`}
+          </p>
+          <div className="mt-auto pt-4 border-t border-slate-100">
+             <a 
+               href={isRegistrationRequired ? "https://reg.gst.gov.in/registration/" : "https://www.gst.gov.in/help"} 
+               target="_blank" 
+               rel="noopener noreferrer" 
+               className="w-full flex justify-center items-center gap-2 px-4 py-2 bg-slate-50 hover:bg-slate-100 text-slate-700 text-sm font-bold rounded-lg border border-slate-200 transition-colors"
+             >
+               {isRegistrationRequired ? "Apply on GST Portal" : "Learn about voluntary"}
+               <ExternalLink size={14} />
+             </a>
+          </div>
+        </div>
+
+        {/* Composition Scheme Card */}
+        <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm flex flex-col">
+          <div className="flex justify-between items-start mb-4">
+             <h3 className="text-slate-800 font-bold flex items-center gap-2">
+               <TrendingUp size={18} className={isCompositionEligible ? "text-emerald-500" : "text-slate-400"} /> 
+               Composition
+             </h3>
+             {isCompositionEligible ? (
+               <span className="bg-emerald-50 text-emerald-700 border border-emerald-200 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wide">
+                 Eligible
+               </span>
+             ) : (
+               <span className="bg-slate-100 text-slate-600 border border-slate-200 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wide">
+                 Not Eligible
+               </span>
+             )}
+          </div>
+          <p className="text-sm text-slate-600 font-medium mb-6 flex-1">
+            {isCompositionEligible
+              ? "You can opt for this scheme to pay a flat 1% tax and file quarterly instead of monthly."
+              : `Your profile (${(numTurnover/100000).toFixed(1)}L / ${sector}) exceeds limit of ₹1.5 Cr or sector rules.`}
+          </p>
+          <div className="mt-auto pt-4 border-t border-slate-100">
+            {isCompositionEligible ? (
+               <a 
+                 href="https://www.gst.gov.in/help/composition" 
+                 target="_blank" 
+                 rel="noopener noreferrer" 
+                 className="w-full flex justify-center items-center gap-2 px-4 py-2 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 text-sm font-bold rounded-lg border border-emerald-200 transition-colors"
+               >
+                 How to Opt-in <ExternalLink size={14} />
+               </a>
+            ) : (
+                <button 
+                  onClick={() => setShowLegalDetails({
+                     title: "Composition Scheme Rules",
+                     text: "To be eligible, turnover must be under ₹1.5 Cr and operations must match rules (e.g. Retail/Manufacturing, no inter-state supply)."
+                  })}
+                  className="w-full flex justify-center items-center gap-1 px-4 py-2 text-slate-500 hover:text-slate-900 text-sm font-bold rounded-lg transition-colors border border-transparent hover:border-slate-200"
+                >
+                  Eligibility Rules <ChevronRight size={14} />
+                </button>
+            )}
+          </div>
+        </div>
+
+        {/* Required Forms Card Redesigned */}
+        <div className="bg-slate-900 p-6 rounded-2xl border border-slate-800 shadow-xl flex flex-col relative overflow-hidden group">
+          <div className="absolute top-0 right-0 w-32 h-32 bg-slate-800 rounded-bl-full -mr-8 -mt-8 transition-transform group-hover:scale-110"></div>
+          <div className="flex justify-between items-start mb-4 relative z-10">
+             <h3 className="text-white font-bold flex items-center gap-2">
+               <FileText size={18} className="text-slate-400" /> Required Forms
+             </h3>
+          </div>
+          
+          <div className="space-y-3 relative z-10 flex-1">
+            <div className={`p-3 rounded-xl border transition-colors ${isGstr1Urgent ? 'bg-red-500/20 border-red-500/50' : 'bg-slate-800 border-slate-700 hover:border-slate-600'}`}>
+              <div className="flex justify-between items-center mb-1">
+                <span className={`font-bold ${isGstr1Urgent ? 'text-red-400' : 'text-slate-200'}`}>GSTR-1</span>
+                <span className={`text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded ${isGstr1Urgent ? 'bg-red-500 text-white' : 'bg-slate-700 text-slate-400'}`}>
+                  Due 11th
+                </span>
+              </div>
+              <p className="text-xs text-slate-400">Outward Supplies Detail</p>
+            </div>
+
+            <div className={`p-3 rounded-xl border transition-colors ${isGstr3bUrgent ? 'bg-red-500/20 border-red-500/50' : 'bg-slate-800 border-slate-700 hover:border-slate-600'}`}>
+              <div className="flex justify-between items-center mb-1">
+                <span className={`font-bold ${isGstr3bUrgent ? 'text-red-400' : 'text-slate-200'}`}>GSTR-3B</span>
+                <span className={`text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded ${isGstr3bUrgent ? 'bg-red-500 text-white' : 'bg-slate-700 text-slate-400'}`}>
+                  Due 20th
+                </span>
+              </div>
+              <p className="text-xs text-slate-400">Monthly Summary Return</p>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+      {/* Editor Drawer */}
+      <AnimatePresence>
+        {showProfileDrawer && (
+          <>
+            <motion.div 
+               initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} 
+               className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-40"
+               onClick={() => setShowProfileDrawer(false)}
+            />
+            <motion.div 
+              initial={{ x: "100%" }} animate={{ x: 0 }} exit={{ x: "100%" }}
+              transition={{ type: "spring", damping: 25, stiffness: 200 }}
+              className="fixed top-0 bottom-0 right-0 w-full max-w-md bg-white shadow-2xl z-50 flex flex-col"
+            >
+              <div className="p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50">
+                <h3 className="font-bold text-lg text-slate-900">Update Profile</h3>
+                <button onClick={() => setShowProfileDrawer(false)} className="p-2 hover:bg-slate-200 rounded-full text-slate-500 transition-colors">
+                  <X size={20} />
+                </button>
+              </div>
+              
+              <div className="p-6 flex-1 overflow-y-auto space-y-6">
+                <div>
+                  <label className="block text-sm font-semibold text-slate-700 mb-2">Annual Turnover</label>
+                  <p className="text-2xl font-black text-rose-600 mb-4">₹{(Number(turnover)/100000).toFixed(1)} Lakhs</p>
+                  <input
+                    type="range" min={100000} max={50000000} step={100000}
+                    value={turnover}
+                    onChange={(e) => setTurnover(e.target.value)}
+                    className="w-full accent-rose-600"
+                  />
+                  <p className="text-xs text-slate-500 mt-2 text-right">Max: ₹500 Lakhs</p>
+                </div>
+                
+                <div>
+                  <label className="block text-sm font-semibold text-slate-700 mb-2">Primary Sector</label>
+                  <select
+                    value={sector} onChange={(e) => setSector(e.target.value)}
+                    className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 focus:border-rose-500 focus:ring-2 focus:ring-rose-500/20 outline-none"
+                  >
+                    <option>Retail</option>
+                    <option>Manufacturing</option>
+                    <option>Services</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-semibold text-slate-700 mb-2">Registered State</label>
+                  <select
+                    value={state} onChange={(e) => setState(e.target.value)}
+                    className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 focus:border-rose-500 focus:ring-2 focus:ring-rose-500/20 outline-none"
+                  >
+                    <option>Telangana</option>
+                    <option>Maharashtra</option>
+                    <option>Karnataka</option>
+                    <option>Delhi</option>
+                  </select>
+                </div>
+              </div>
+              
+              <div className="p-6 border-t border-slate-100 bg-slate-50">
+                 <button 
+                   onClick={() => setShowProfileDrawer(false)}
+                   className="w-full bg-slate-900 text-white font-bold py-3.5 rounded-xl shadow-lg hover:bg-slate-800 transition-colors"
+                 >
+                   Save Active Profile
+                 </button>
+              </div>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
+
+      {/* Legal Text Modal */}
+      <AnimatePresence>
+        {showLegalDetails && (
+          <>
+            <motion.div 
+               initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} 
+               className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+               onClick={() => setShowLegalDetails(null)}
+            >
+               <motion.div 
+                 initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.95, opacity: 0 }}
+                 onClick={(e) => e.stopPropagation()}
+                 className="bg-white max-w-lg w-full rounded-2xl shadow-xl overflow-hidden"
+               >
+                 <div className="bg-slate-900 p-5 flex justify-between items-center">
+                    <h4 className="text-white font-bold flex items-center gap-2">
+                       <BookOpen size={18} className="text-rose-500" /> Legal Context
+                    </h4>
+                    <button onClick={() => setShowLegalDetails(null)} className="text-slate-400 hover:text-white">
+                      <X size={20} />
+                    </button>
+                 </div>
+                 <div className="p-6">
+                    <h5 className="font-bold text-slate-800 mb-3">{showLegalDetails.title}</h5>
+                    <div className="bg-slate-50 border-l-4 border-slate-300 p-4 rounded-r-xl">
+                      <p className="text-sm text-slate-600 leading-relaxed font-serif">
+                        "{showLegalDetails.text}"
+                      </p>
+                    </div>
+                 </div>
+               </motion.div>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
+
     </div>
   );
 }

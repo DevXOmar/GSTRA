@@ -4,13 +4,12 @@ import { useMutation } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
 import { useDropzone } from "react-dropzone";
 import { analyzeInvoice, LanguageCode } from "@/lib/api";
-import { UploadCloud, FileText, CheckCircle2, AlertTriangle, FileSearch, Sparkles, Loader2, Info } from "lucide-react";
+import { UploadCloud, FileText, CheckCircle2, CheckCircle, AlertTriangle, FileSearch, Sparkles, Loader2, Info, ShieldAlert, Search, ArrowRight, XCircle, Download } from "lucide-react";
 import { toast } from "sonner";
 import { motion } from "framer-motion";
 
 export default function InvoicePage() {
   const [file, setFile] = useState<File | null>(null);
-  const [language, setLanguage] = useState<LanguageCode>("en");
 
   const previewUrl = useMemo(() => {
     if (!file) return "";
@@ -58,17 +57,6 @@ export default function InvoicePage() {
           </h2>
           <p className="text-sm text-slate-500 mt-1">Upload a bill to check HSN codes, rates, and find errors automatically.</p>
         </div>
-        <select
-          value={language}
-          onChange={(e) => setLanguage(e.target.value as LanguageCode)}
-          className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm text-slate-700 focus:border-rose-500 focus:ring-1 focus:ring-rose-500 outline-none w-full sm:w-auto"
-        >
-          <option value="en">English (Report)</option>
-          <option value="hi">Hindi (Report)</option>
-          <option value="te">Telugu (Report)</option>
-          <option value="ta">Tamil (Report)</option>
-          <option value="bn">Bengali (Report)</option>
-        </select>
       </div>
 
       {!file && (
@@ -133,7 +121,7 @@ export default function InvoicePage() {
                     Our AI will scan your invoice to verify GST compliance, check HSN rates, and flag hidden errors.
                   </p>
                   <button
-                    onClick={() => mutation.mutate({ selectedFile: file, lang: language })}
+                    onClick={() => mutation.mutate({ selectedFile: file, lang: "en" })}
                     className="rounded-full bg-rose-600 px-8 py-3 font-semibold text-white shadow-md hover:bg-rose-700 transition-all flex items-center gap-2"
                   >
                     Analyze Now
@@ -153,56 +141,124 @@ export default function InvoicePage() {
 
             {mutation.data && (
               <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="flex flex-col gap-4">
-                <div className="grid grid-cols-2 gap-4">
-                  <article className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-                    <p className="text-sm font-medium text-slate-500 uppercase tracking-wider mb-1">Detected HSN</p>
-                    <p className="text-2xl font-black text-slate-800">{mutation.data.data.hsn || "N/A"}</p>
-                  </article>
+                
+                {/* 1. The Bottom Line (Financial Summary) */}
+                <article className="rounded-2xl border border-emerald-200 bg-emerald-50 p-6 shadow-sm relative overflow-hidden">
+                  <div className="absolute top-0 right-0 w-24 h-24 bg-emerald-100 rounded-bl-full -mr-4 -mt-4 opacity-50"></div>
+                  <h3 className="text-sm font-bold text-emerald-800 uppercase tracking-widest mb-4 flex items-center gap-2 relative z-10">
+                    <CheckCircle2 size={18} /> Financial Summary
+                  </h3>
+                  
+                  <div className="space-y-4 relative z-10">
+                    <div className="flex justify-between items-center bg-white/60 p-3 rounded-lg border border-emerald-100/50">
+                      <span className="text-emerald-900 font-medium">Total Invoice Value</span>
+                      <span className="text-lg font-bold text-emerald-900">₹{mutation.data.data.total_invoice_value?.toLocaleString() || "0"}</span>
+                    </div>
+                    
+                    <div className="flex justify-between items-center bg-white/60 p-3 rounded-lg border border-emerald-100/50">
+                      <span className="text-emerald-900 font-medium">Total Tax Amount</span>
+                      <span className="text-lg font-bold text-emerald-900">₹{mutation.data.data.total_tax_amount?.toLocaleString() || "0"}</span>
+                    </div>
 
-                  <article className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-                    <p className="text-sm font-medium text-slate-500 uppercase tracking-wider mb-1">GST Rate</p>
-                    <p className="text-2xl font-black text-slate-800">{mutation.data.data.gst_rate || "N/A"}</p>
-                  </article>
-                </div>
-
-                <article className={`rounded-2xl border p-5 shadow-sm ${mutation.data.data.errors?.length > 0 ? "border-red-200 bg-red-50" : "border-green-200 bg-green-50"}`}>
-                  <div className="flex items-center gap-2 mb-3">
-                    {mutation.data.data.errors?.length > 0 ? (
-                      <><AlertTriangle className="text-red-500" size={20} /> <p className="font-bold text-red-800 text-lg">Compliance Issues Found</p></>
-                    ) : (
-                      <><CheckCircle2 className="text-green-600" size={20} /> <p className="font-bold text-green-800 text-lg">No Errors Detected</p></>
-                    )}
+                    <div className="flex justify-between items-center bg-emerald-100 p-4 rounded-xl border border-emerald-300 shadow-inner">
+                      <span className="text-emerald-950 font-bold">Eligible ITC</span>
+                      <div className="text-right">
+                        <p className="text-2xl font-black text-emerald-700">₹{mutation.data.data.eligible_itc?.toLocaleString() || "0"}</p>
+                        <p className="text-xs text-emerald-800 font-bold mt-0.5">Available to Claim</p>
+                      </div>
+                    </div>
                   </div>
-                  {mutation.data.data.errors?.length > 0 && (
-                     <ul className="space-y-2">
-                       {mutation.data.data.errors.map((item, idx) => (
-                         <li key={idx} className="flex gap-2 items-start text-sm text-red-700 bg-white/60 p-2 rounded border border-red-100">
-                           <span className="mt-0.5">•</span> {item}
-                         </li>
-                       ))}
-                     </ul>
+                </article>
+
+                {/* 2. Compliance Audit Checklist */}
+                <article className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+                  <h3 className="text-sm font-bold text-slate-800 uppercase tracking-widest mb-4 flex items-center gap-2">
+                    <ShieldAlert size={18} className="text-slate-500" /> Compliance Audit
+                  </h3>
+                  
+                  <ul className="space-y-3">
+                    <li className="flex gap-3 items-start p-3 rounded-xl bg-slate-50 border border-slate-100">
+                      {mutation.data.data.math_validation_status === 'valid' ? <CheckCircle className="text-emerald-500 shrink-0 mt-0.5" size={18} /> : <XCircle className="text-red-500 shrink-0 mt-0.5" size={18} />}
+                      <div>
+                        <p className={`text-sm font-bold ${mutation.data.data.math_validation_status === 'valid' ? 'text-slate-800' : 'text-red-700'}`}>Math Validation</p>
+                        <p className="text-xs text-slate-500 font-medium mt-1">Line item totals and tax calculations match.</p>
+                      </div>
+                    </li>
+
+                    <li className="flex gap-3 items-start p-3 rounded-xl bg-slate-50 border border-slate-100">
+                       {mutation.data.data.supply_routing_status === 'valid' ? <CheckCircle className="text-emerald-500 shrink-0 mt-0.5" size={18} /> : <XCircle className="text-red-500 shrink-0 mt-0.5" size={18} />}
+                      <div>
+                        <p className={`text-sm font-bold ${mutation.data.data.supply_routing_status === 'valid' ? 'text-slate-800' : 'text-red-700'}`}>Supply Routing</p>
+                        <p className="text-xs text-slate-500 font-medium mt-1">
+                          {mutation.data.data.buyer_state_code === mutation.data.data.supplier_state_code && mutation.data.data.buyer_state_code !== 'unknown' 
+                            ? `Intra-state Supply Verified (State Code ${mutation.data.data.supplier_state_code} to ${mutation.data.data.buyer_state_code}). CGST & SGST applied.` 
+                            : mutation.data.data.buyer_state_code !== mutation.data.data.supplier_state_code && mutation.data.data.buyer_state_code !== 'unknown' 
+                            ? `Inter-state Supply Verified (State Code ${mutation.data.data.supplier_state_code} to ${mutation.data.data.buyer_state_code}). IGST applied.`
+                            : "Supply routing validation based on State Codes."}
+                        </p>
+                      </div>
+                    </li>
+
+                    <li className="flex gap-3 items-start p-3 rounded-xl bg-slate-50 border border-slate-100">
+                      {mutation.data.data.gstin_format_status === 'valid' ? <CheckCircle className="text-emerald-500 shrink-0 mt-0.5" size={18} /> : <XCircle className="text-red-500 shrink-0 mt-0.5" size={18} />}
+                      <div>
+                        <p className={`text-sm font-bold ${mutation.data.data.gstin_format_status === 'valid' ? 'text-slate-800' : 'text-red-700'}`}>GSTIN Format</p>
+                        <p className="text-xs text-slate-500 font-medium mt-1">Supplier & Buyer GSTIN formats are valid.</p>
+                      </div>
+                    </li>
+                  </ul>
+                  
+                  {/* Additional Actionable Alerts if any */}
+                  {mutation.data.data.actionable_alerts?.length > 0 && (
+                     <div className="mt-4 pt-4 border-t border-slate-100">
+                       <ul className="space-y-2">
+                         {mutation.data.data.actionable_alerts.map((item: string, idx: number) => (
+                           <li key={idx} className="flex gap-2 items-start text-xs text-red-700 bg-red-50 p-2 rounded-lg border border-red-100 font-medium">
+                             <AlertTriangle size={14} className="shrink-0 mt-0.5" /> {item}
+                           </li>
+                         ))}
+                       </ul>
+                     </div>
                   )}
                 </article>
 
-                <article className="rounded-2xl border border-amber-200 bg-amber-50 p-5 shadow-sm">
-                  <div className="flex items-center gap-2 mb-3">
-                    <Info className="text-amber-600" size={20} /> <p className="font-bold text-amber-800 text-lg">AI Suggestions</p>
-                  </div>
-                  <ul className="space-y-2">
-                    {mutation.data.data.suggestions?.length > 0 ? (
-                      mutation.data.data.suggestions.map((item, idx) => (
-                        <li key={idx} className="flex gap-2 items-start text-sm text-amber-800 bg-white/60 p-2 rounded border border-amber-100">
-                           <span className="mt-0.5">•</span> {item}
-                        </li>
-                      ))
-                    ) : (
-                      <p className="text-sm text-amber-700">No suggestions needed.</p>
-                    )}
-                  </ul>
-                </article>
+                {/* 3. Product & Tax Breakdown */}
+                <div className="grid grid-cols-2 gap-4">
+                  <article className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+                    <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-1.5 flex items-center gap-1.5"><FileSearch size={14} /> Detected HSN</p>
+                    <p className="text-lg font-black text-slate-800 break-all" title={mutation.data.data.extracted_hsn?.join(", ")}>{mutation.data.data.extracted_hsn?.join(", ") || "N/A"}</p>
+                  </article>
+
+                  <article className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+                    <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-1.5 flex items-center gap-1.5"><FileText size={14} /> Tax Slab</p>
+                    <p className="text-lg font-black text-slate-800">{mutation.data.data.effective_tax_slab || "N/A"}</p>
+                  </article>
+                </div>
+
+                {/* 4. Quick Actions */}
+                <div className="flex gap-3 mt-2">
+                   {mutation.data.data.quick_actions?.length > 0 && mutation.data.data.quick_actions.map((action: any, idx: number) => (
+                     <a 
+                       key={idx}
+                       href={action.url} 
+                       target="_blank" 
+                       rel="noreferrer" 
+                       className="flex-1 flex justify-center items-center gap-2 text-sm font-bold text-slate-700 bg-white border-2 border-slate-200 px-4 py-3 rounded-xl hover:border-slate-300 hover:bg-slate-50 transition-colors shadow-sm"
+                     >
+                       <Search size={16} /> Verify GSTIN
+                     </a>
+                   ))}
+                   
+                   <button 
+                     onClick={() => window.print()}
+                     className="flex-1 flex justify-center items-center gap-2 text-sm font-bold text-white bg-slate-900 border-2 border-slate-900 px-4 py-3 rounded-xl hover:bg-slate-800 transition-colors shadow-sm"
+                   >
+                     <Download size={16} /> Export Report
+                   </button>
+                </div>
                 
                 {mutation.data.status === 'error' && (
-                   <p className="text-xs text-red-500 font-medium px-2">* Note: Our agent experienced an error during final validation.</p>
+                   <p className="text-xs text-red-500 font-medium px-2 text-center mt-2">* Note: Our agent experienced an error during final validation.</p>
                 )}
               </motion.div>
             )}

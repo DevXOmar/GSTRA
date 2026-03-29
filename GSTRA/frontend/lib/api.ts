@@ -37,10 +37,18 @@ export async function analyzeInvoice(file: File, language: LanguageCode) {
     status: string;
     language: LanguageCode;
     data: {
-      hsn: string;
-      gst_rate: string;
-      errors: string[];
-      suggestions: string[];
+      total_invoice_value: number;
+      total_tax_amount: number;
+      eligible_itc: number;
+      buyer_state_code: string;
+      supplier_state_code: string;
+      math_validation_status: "valid" | "invalid";
+      supply_routing_status: "valid" | "invalid";
+      gstin_format_status: "valid" | "invalid";
+      extracted_hsn: string[];
+      effective_tax_slab: string;
+      actionable_alerts: string[];
+      quick_actions: { label: string; url: string }[];
       extracted_text_preview?: string;
     };
   }>(res);

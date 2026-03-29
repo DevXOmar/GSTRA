@@ -103,10 +103,18 @@ async def analyze_invoice(
         if not extracted_text:
             return api_response(
                 {
-                    "hsn": "unknown",
-                    "gst_rate": "unknown",
-                    "errors": ["No text could be extracted from invoice."],
-                    "suggestions": ["Upload a clearer invoice image/PDF and try again."],
+                    "total_invoice_value": 0,
+                    "total_tax_amount": 0,
+                    "eligible_itc": 0,
+                    "buyer_state_code": "unknown",
+                    "supplier_state_code": "unknown",
+                    "math_validation_status": "invalid",
+                    "supply_routing_status": "invalid",
+                    "gstin_format_status": "invalid",
+                    "extracted_hsn": [],
+                    "effective_tax_slab": "unknown",
+                    "actionable_alerts": ["No text could be extracted from invoice."],
+                    "quick_actions": [],
                     "extracted_text_preview": "",
                 },
                 language=lang,
