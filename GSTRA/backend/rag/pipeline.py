@@ -42,6 +42,9 @@ def get_chat_llm():
             "X-Title": "GSTRA",
         },
         temperature=0.2,
+        max_tokens=2000,
+        max_retries=1,
+        timeout=15.0,
     )
 
 

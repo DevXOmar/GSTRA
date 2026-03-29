@@ -5,6 +5,7 @@ from typing import Any, Dict, List, Optional
 from fastapi import FastAPI, File, Form, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
+from langchain_core.utils.json import parse_json_markdown
 
 from agents.invoice_agent import InvoiceAgent
 from rag.pipeline import LANGUAGE_GUIDANCE, GSTRagPipeline, get_chat_llm
@@ -28,20 +29,9 @@ def api_response(data: Any, language: str, status: str = "success") -> Dict[str,
 
 
 def extract_first_json(text: str) -> Dict[str, Any]:
-    match = re.search(r"\{[\s\S]*\}", text)
-    if not match:
-        return {
-            "registration_required": "unknown",
-            "applicable_forms": [],
-            "due_dates": [],
-            "penalties": [],
-            "composition_eligible": "unknown",
-            "notes": ["Unable to parse LLM output."],
-        }
-
     try:
-        return json.loads(match.group(0))
-    except json.JSONDecodeError:
+        return parse_json_markdown(text)
+    except Exception:
         return {
             "registration_required": "unknown",
             "applicable_forms": [],
@@ -121,7 +111,8 @@ async def analyze_invoice(
                 status="error",
             )
 
-        analysis = invoice_agent.analyze_invoice_text(extracted_text, language=lang)
+        import asyncio
+        analysis = await asyncio.to_thread(invoice_agent.analyze_invoice_text, extracted_text, lang)
         analysis["extracted_text_preview"] = extracted_text[:1000]
         return api_response(analysis, language=lang)
     except Exception as e:

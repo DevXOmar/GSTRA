@@ -1,0 +1,1 @@
+This is a simple text file with GST IN: 29ABCDE1234F1Z5, HSN: 1234 expected to be ignored or act as an invoice.

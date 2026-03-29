@@ -92,50 +92,279 @@ export default function ChatPage() {
       return;
     }
     
+    // Convert markdown to HTML for the print view since we don't have React components there
+    const makeHtml = (text: string) => {
+      let html = text
+        .replace(/\\*\\*(.*?)\\*\\*/g, '<strong>$1</strong>')
+        .replace(/\\*(.*?)\\*/g, '<em>$1</em>')
+        .replace(/\\n/g, '<br/>')
+        .replace(/`([^`]+)`/g, '<code>$1</code>');
+      
+      // Simple list handling
+      html = html.replace(/(?:^|<br\/>)\s*[-*]\s+(.*)/g, '<li>$1</li>');
+      html = html.replace(/(<li>[\s\S]*<\/li>)/, '<ul>$1</ul>');
+      return html;
+    };
+
     const htmlContent = `
       <!DOCTYPE html>
       <html>
         <head>
           <title>GSTRA Advisory Summary - ${new Date().toLocaleDateString()}</title>
+          <link rel="preconnect" href="https://fonts.googleapis.com">
+          <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+          <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
           <style>
-            body { font-family: system-ui, -apple-system, sans-serif; max-width: 800px; margin: 0 auto; padding: 40px; color: #0f172a; line-height: 1.5; }
-            h1 { color: #e11d48; margin-bottom: 8px; font-size: 24px; }
-            .meta { color: #64748b; font-size: 14px; margin-bottom: 40px; padding-bottom: 20px; border-bottom: 1px solid #e2e8f0; }
-            .message { margin-bottom: 24px; padding: 20px; border-radius: 12px; page-break-inside: avoid; }
-            .user { background: #f8fafc; border: 1px solid #e2e8f0; margin-left: 40px; }
-            .assistant { background: #fff1f2; border: 1px solid #ffe4e6; margin-right: 40px;}
-            .role { font-weight: bold; font-size: 12px; text-transform: uppercase; margin-bottom: 8px; color: #475569; }
-            .content { font-size: 14px; white-space: pre-wrap; }
-            .citations { margin-top: 12px; padding-top: 12px; border-top: 1px solid rgba(0,0,0,0.1); font-size: 12px; color: #64748b; }
+            :root {
+              --primary: #e11d48;
+              --primary-light: #fff1f2;
+              --text-main: #0f172a;
+              --text-muted: #64748b;
+              --bg-page: #f8fafc;
+              --border-color: #e2e8f0;
+            }
+            body { 
+              font-family: 'Inter', system-ui, -apple-system, sans-serif; 
+              max-width: 800px; 
+              margin: 0 auto; 
+              padding: 40px; 
+              color: var(--text-main); 
+              line-height: 1.6;
+              background-color: white;
+            }
+            .header {
+              border-bottom: 2px solid var(--primary);
+              padding-bottom: 20px;
+              margin-bottom: 30px;
+              display: flex;
+              justify-content: space-between;
+              align-items: flex-end;
+            }
+            .header-content h1 { 
+              color: var(--primary); 
+              margin: 0 0 5px 0; 
+              font-size: 28px; 
+              font-weight: 700;
+              letter-spacing: -0.5px;
+            }
+            .header-content p {
+              margin: 0;
+              color: var(--text-muted);
+              font-size: 14px;
+            }
+            .watermark {
+              font-size: 12px;
+              font-weight: 600;
+              color: #cbd5e1;
+              text-transform: uppercase;
+              letter-spacing: 1px;
+            }
+            .profile-grid {
+              display: grid;
+              grid-template-columns: repeat(2, 1fr);
+              gap: 15px;
+              background: var(--bg-page);
+              border: 1px solid var(--border-color);
+              border-radius: 8px;
+              padding: 20px;
+              margin-bottom: 40px;
+            }
+            .profile-item {
+              display: flex;
+              flex-direction: column;
+            }
+            .profile-label {
+              font-size: 11px;
+              text-transform: uppercase;
+              letter-spacing: 0.5px;
+              font-weight: 600;
+              color: var(--text-muted);
+              margin-bottom: 4px;
+            }
+            .profile-value {
+              font-size: 15px;
+              font-weight: 500;
+              color: var(--text-main);
+            }
+            .qa-section {
+              margin-bottom: 40px;
+            }
+            .session-title {
+              font-size: 18px;
+              font-weight: 600;
+              margin-bottom: 20px;
+              color: var(--text-main);
+              display: flex;
+              align-items: center;
+              gap: 8px;
+            }
+            .session-title::before {
+              content: '';
+              display: inline-block;
+              width: 4px;
+              height: 18px;
+              background: var(--primary);
+              border-radius: 2px;
+            }
+            .message { 
+              margin-bottom: 20px; 
+              padding: 20px; 
+              border-radius: 8px; 
+              page-break-inside: avoid; 
+            }
+            .user { 
+              background: #ffffff; 
+              border: 1px solid var(--border-color); 
+              border-left: 4px solid var(--text-muted);
+              margin-left: 20px; 
+            }
+            .assistant { 
+              background: var(--primary-light); 
+              border: 1px solid #ffe4e6; 
+              border-left: 4px solid var(--primary);
+              margin-right: 20px;
+            }
+            .role { 
+              font-weight: 600; 
+              font-size: 12px; 
+              text-transform: uppercase; 
+              margin-bottom: 8px; 
+              letter-spacing: 0.5px;
+            }
+            .user .role { color: var(--text-muted); }
+            .assistant .role { color: var(--primary); }
+            
+            .content { 
+              font-size: 14px; 
+            }
+            .content p { margin-top: 0; }
+            .content strong { color: #000; }
+            .content ul { padding-left: 20px; margin: 10px 0; }
+            .content li { margin-bottom: 5px; }
+            .content code {
+              background: rgba(0,0,0,0.05);
+              padding: 2px 4px;
+              border-radius: 3px;
+              font-family: monospace;
+              font-size: 13px;
+            }
+            
+            .citations { 
+              margin-top: 15px; 
+              padding-top: 15px; 
+              border-top: 1px dashed rgba(0,0,0,0.1); 
+            }
+            .citation-title {
+              font-size: 11px;
+              font-weight: 600;
+              text-transform: uppercase;
+              color: var(--text-muted);
+              margin-bottom: 8px;
+            }
+            .citation-item {
+              background: white;
+              border: 1px solid var(--border-color);
+              padding: 8px 12px;
+              border-radius: 6px;
+              margin-bottom: 8px;
+              font-size: 12px;
+            }
+            .citation-item strong {
+              display: block;
+              color: var(--text-main);
+              margin-bottom: 3px;
+            }
+            .citation-item span {
+              color: var(--text-muted);
+              font-style: italic;
+            }
+            
+            .footer {
+              margin-top: 50px;
+              padding-top: 20px;
+              border-top: 2px solid var(--border-color);
+              text-align: center;
+              font-size: 12px;
+              color: var(--text-muted);
+              page-break-inside: avoid;
+            }
+            
             @media print {
-              body { padding: 0; }
+              body { padding: 0; background: white; }
               @page { margin: 2cm; }
+              .user, .assistant { border: 1px solid #ccc; background: transparent !important; }
+              .assistant { border-left: 4px solid var(--primary); }
+              .user { border-left: 4px solid var(--text-muted); }
+              .profile-grid { background: transparent !important; border: 1px solid #ccc; }
             }
           </style>
         </head>
         <body>
-          <h1>GSTRA - Tax Advisory Summary</h1>
-          <div class="meta">
-            <strong>Date Generated:</strong> ${new Date().toLocaleDateString()}<br>
-            <strong>Business Profile:</strong> ${sector} | ₹${(Number(turnover) / 100000).toFixed(1)} Lakhs | ${state} | ${gstMode}
-          </div>
-          ${messages.filter(m => m.role !== 'error').map(m => `
-            <div class="message ${m.role}">
-              <div class="role">${m.role === 'user' ? '👤 Client Inquiry' : '🤖 Tax Associate'}</div>
-              <div class="content">${m.content}</div>
-              ${m.citations && m.citations.length > 0 ? `
-                <div class="citations">
-                  <strong>Sources Cited:</strong><br>
-                  ${m.citations.map(c => `• ${c.title}`).join('<br>')}
-                </div>
-              ` : ''}
+          <div class="header">
+            <div class="header-content">
+              <h1>GSTRA Tax Advisory</h1>
+              <p>Automated CA Consultation Report</p>
             </div>
-          `).join('')}
+            <div class="watermark">CONFIDENTIAL</div>
+          </div>
+          
+          <div class="profile-grid">
+            <div class="profile-item">
+              <span class="profile-label">Date Generated</span>
+              <span class="profile-value">${new Date().toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' })}</span>
+            </div>
+            <div class="profile-item">
+              <span class="profile-label">Business Sector</span>
+              <span class="profile-value">${sector}</span>
+            </div>
+            <div class="profile-item">
+              <span class="profile-label">Annual Turnover</span>
+              <span class="profile-value">₹${(Number(turnover) / 100000).toFixed(1)} Lakhs</span>
+            </div>
+            <div class="profile-item">
+              <span class="profile-label">State Jurisdiction</span>
+              <span class="profile-value">${state}</span>
+            </div>
+            <div class="profile-item">
+              <span class="profile-label">GST Mode</span>
+              <span class="profile-value">${gstMode}</span>
+            </div>
+            <div class="profile-item">
+              <span class="profile-label">Customer Typology</span>
+              <span class="profile-value">${customerType}</span>
+            </div>
+          </div>
+          
+          <div class="qa-section">
+            <div class="session-title">Consultation Transcript</div>
+            ${messages.filter(m => m.role !== 'error').map(m => `
+              <div class="message ${m.role}">
+                <div class="role">${m.role === 'user' ? 'Client Query' : 'GSTRA Advisor'}</div>
+                <div class="content">${makeHtml(m.content)}</div>
+                ${m.citations && m.citations.length > 0 ? `
+                  <div class="citations">
+                    <div class="citation-title">Referenced Authorities</div>
+                    ${m.citations.map(c => `
+                      <div class="citation-item">
+                        <strong>${c.title}</strong>
+                        <span>"${c.excerpt}"</span>
+                      </div>
+                    `).join('')}
+                  </div>
+                ` : ''}
+              </div>
+            `).join('')}
+          </div>
+          
+          <div class="footer">
+            <p>This document is auto-generated by GSTRA's AI Tax Assistant.<br>It does not constitute legally binding advice. Please consult a certified professional before making final decisions.</p>
+          </div>
           <script>
             window.onload = () => { 
-                window.print(); 
-                /* Close the tab after printing */
-                window.setTimeout(() => window.close(), 500); 
+                // Give it a moment to render fonts
+                setTimeout(() => {
+                  window.print(); 
+                }, 300);
             }
           </script>
         </body>

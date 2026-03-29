@@ -48,6 +48,274 @@ export default function InvoicePage() {
     }
   });
 
+  const handleExportReport = () => {
+    if (!mutation.data || mutation.data.status !== "success") {
+      toast.error("No valid analysis data to export.");
+      return;
+    }
+
+    const printWindow = window.open('', '_blank');
+    if (!printWindow) {
+      toast.error("Please allow popups to generate the PDF.");
+      return;
+    }
+    
+    // Using 'any' to ensure smooth mapping over potentially dynamic AI fields
+    const data = mutation.data.data as any;
+
+    // Calculate synthetic status parameters based on exact data flags
+    const isPerfect = (data.math_validation_status === 'valid' && 
+                       data.gstin_format_status === 'valid' && 
+                       (!data.actionable_alerts || data.actionable_alerts.length === 0));
+    const hasError = data.math_validation_status === 'invalid' || data.gstin_format_status === 'invalid';
+    
+    let synthStatus = isPerfect ? 'Perfect' : (hasError ? 'Error' : 'Warning');
+    let synthScore = isPerfect ? '100' : (hasError ? '65' : '85');
+
+    const htmlContent = `
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <title>GSTRA Invoice Audit Report - ${new Date().toLocaleDateString()}</title>
+          <link rel="preconnect" href="https://fonts.googleapis.com">
+          <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+          <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+          <style>
+            :root {
+              --primary: #e11d48;
+              --text-main: #0f172a;
+              --text-muted: #64748b;
+              --bg-page: #f8fafc;
+              --border-color: #e2e8f0;
+              --success: #10b981;
+              --warning: #f59e0b;
+              --error: #ef4444;
+            }
+            body { 
+              font-family: 'Inter', system-ui, -apple-system, sans-serif; 
+              max-width: 800px; 
+              margin: 0 auto; 
+              padding: 40px; 
+              color: var(--text-main); 
+              line-height: 1.6;
+              background-color: white;
+            }
+            .header {
+              border-bottom: 2px solid var(--primary);
+              padding-bottom: 20px;
+              margin-bottom: 30px;
+              display: flex;
+              justify-content: space-between;
+              align-items: flex-end;
+            }
+            .header-content h1 { 
+              color: var(--primary); 
+              margin: 0 0 5px 0; 
+              font-size: 28px; 
+              font-weight: 700;
+              letter-spacing: -0.5px;
+            }
+            .header-content p {
+              margin: 0;
+              color: var(--text-muted);
+              font-size: 14px;
+            }
+            .status-badge {
+              padding: 6px 12px;
+              border-radius: 6px;
+              font-weight: 600;
+              font-size: 14px;
+              text-transform: uppercase;
+              letter-spacing: 0.5px;
+            }
+            .status-Perfect { background: #d1fae5; color: #047857; border: 1px solid #10b981; }
+            .status-Warning { background: #fef3c7; color: #b45309; border: 1px solid #f59e0b; }
+            .status-Error { background: #fee2e2; color: #b91c1c; border: 1px solid #ef4444; }
+            
+            .grid-2 {
+              display: grid;
+              grid-template-columns: repeat(2, 1fr);
+              gap: 20px;
+              margin-bottom: 30px;
+            }
+            .summary-box {
+              background: var(--bg-page);
+              border: 1px solid var(--border-color);
+              border-radius: 8px;
+              padding: 20px;
+            }
+            .summary-label {
+              font-size: 12px;
+              text-transform: uppercase;
+              color: var(--text-muted);
+              font-weight: 600;
+              margin-bottom: 5px;
+            }
+            .summary-value {
+              font-size: 24px;
+              font-weight: 700;
+              color: var(--text-main);
+            }
+            .metric-row {
+              display: flex;
+              justify-content: space-between;
+              padding: 10px 0;
+              border-bottom: 1px solid var(--border-color);
+            }
+            .metric-row:last-child {
+              border-bottom: none;
+              padding-bottom: 0;
+            }
+            .metric-label { font-weight: 500; font-size: 14px; }
+            .metric-value { font-weight: 600; font-size: 14px; text-transform: uppercase; }
+            .valid { color: #059669; }
+            .invalid { color: #dc2626; }
+            
+            .section-title {
+              font-size: 18px;
+              font-weight: 600;
+              margin: 30px 0 15px 0;
+              color: var(--text-main);
+              border-bottom: 1px solid var(--border-color);
+              padding-bottom: 8px;
+            }
+            
+            .alert-box {
+              background: #fff1f2;
+              border-left: 4px solid var(--primary);
+              padding: 15px;
+              border-radius: 4px;
+              margin-bottom: 10px;
+              font-size: 14px;
+            }
+            
+            .footer {
+              margin-top: 50px;
+              padding-top: 20px;
+              border-top: 2px solid var(--border-color);
+              text-align: center;
+              font-size: 12px;
+              color: var(--text-muted);
+            }
+            
+            @media print {
+              body { padding: 0; background: white; }
+              @page { margin: 2cm; }
+              .summary-box { background: transparent !important; border: 1px solid #ccc; }
+              .alert-box { background: transparent !important; border: 1px solid #ccc; border-left: 4px solid var(--primary) !important; }
+            }
+          </style>
+        </head>
+        <body>
+          <div class="header">
+            <div class="header-content">
+              <h1>GSTRA Invoice Audit</h1>
+              <p>Automated Tax Compliance Report</p>
+            </div>
+            <div class="status-badge status-${synthStatus}">
+              ${synthStatus}
+            </div>
+          </div>
+          
+          <div class="grid-2">
+            <div class="summary-box">
+              <div class="summary-label">Financial Summary</div>
+              <div class="summary-value">₹${data.total_invoice_value || '0.00'}</div>
+              <div style="margin-top: 15px;">
+                <div class="metric-row">
+                  <span class="metric-label">Tax Slab</span>
+                  <span class="metric-value">${data.effective_tax_slab || 'Unknown'}</span>
+                </div>
+                <div class="metric-row">
+                  <span class="metric-label">Tax Applied</span>
+                  <span class="metric-value">₹${data.total_tax_amount || '0.00'}</span>
+                </div>
+                <div class="metric-row">
+                  <span class="metric-label">Eligible ITC</span>
+                  <span class="metric-value" style="color: #059669;">₹${data.eligible_itc || '0.00'}</span>
+                </div>
+              </div>
+            </div>
+            
+            <div class="summary-box">
+              <div class="summary-label">Compliance Audit</div>
+              <div class="summary-value" style="font-size: 18px; margin-bottom: 15px;">
+                Health Score: ${synthScore}/100
+              </div>
+              <div>
+                <div class="metric-row">
+                  <span class="metric-label">Math Validation</span>
+                  <span class="metric-value ${data.math_validation_status === 'valid' ? 'valid' : 'invalid'}">
+                    ${data.math_validation_status || 'UNKNOWN'}
+                  </span>
+                </div>
+                <div class="metric-row">
+                  <span class="metric-label">GSTIN Format</span>
+                  <span class="metric-value ${data.gstin_format_status === 'valid' ? 'valid' : 'invalid'}">
+                    ${data.gstin_format_status || 'UNKNOWN'}
+                  </span>
+                </div>
+                <div class="metric-row">
+                  <span class="metric-label">Supply Routing</span>
+                  <span class="metric-value ${data.supply_routing_status === 'valid' ? 'valid' : 'invalid'}">
+                    ${data.supply_routing_status || 'UNKNOWN'}
+                  </span>
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          <div class="section-title">Extracted Details</div>
+          <div style="margin-bottom: 20px;">
+            <div class="metric-row">
+              <span class="metric-label">Detected HSN</span>
+              <span class="metric-value" style="text-transform: none;">${(data.detected_hsn || data.extracted_hsn || []).join(', ') || 'None found'}</span>
+            </div>
+            <div class="metric-row">
+              <span class="metric-label">Detected GSTIN</span>
+              <span class="metric-value" style="font-family: monospace; text-transform: none;">${data.detected_gstin || 'None'}</span>
+            </div>
+            <div class="metric-row">
+              <span class="metric-label">Buyer State Code</span>
+              <span class="metric-value" style="text-transform: none;">${data.buyer_state_code || 'Unknown'}</span>
+            </div>
+            <div class="metric-row">
+              <span class="metric-label">Supplier State Code</span>
+              <span class="metric-value" style="text-transform: none;">${data.supplier_state_code || 'Unknown'}</span>
+            </div>
+          </div>
+          
+          ${data.issues && data.issues.length > 0 ? `
+            <div class="section-title" style="color: #ef4444;">Detected Issues & Alerts</div>
+            ${data.issues.map((issue: string) => `
+              <div class="alert-box">${issue}</div>
+            `).join('')}
+          ` : ''}
+          
+          ${data.actionable_alerts && data.actionable_alerts.length > 0 ? `
+            <div class="section-title" style="color: #ef4444;">Actionable Alerts</div>
+            ${data.actionable_alerts.map((alert: string) => `
+              <div class="alert-box">${alert}</div>
+            `).join('')}
+          ` : ''}
+          
+          <div class="footer">
+            <p>This document is auto-generated by GSTRA's AI Invoice Analyzer.<br>It does not constitute legally binding advice. Please consult a professional before claiming ITC.</p>
+          </div>
+          <script>
+            window.onload = () => { 
+                setTimeout(() => { window.print(); }, 300);
+            }
+          </script>
+        </body>
+      </html>
+    `;
+    
+    printWindow.document.write(htmlContent);
+    printWindow.document.close();
+    toast.success("Audit Report ready for print/PDF export!");
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
@@ -250,7 +518,7 @@ export default function InvoicePage() {
                    ))}
                    
                    <button 
-                     onClick={() => window.print()}
+                     onClick={handleExportReport}
                      className="flex-1 flex justify-center items-center gap-2 text-sm font-bold text-white bg-slate-900 border-2 border-slate-900 px-4 py-3 rounded-xl hover:bg-slate-800 transition-colors shadow-sm"
                    >
                      <Download size={16} /> Export Report
